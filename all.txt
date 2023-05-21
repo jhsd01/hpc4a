@@ -1,0 +1,418 @@
+DFS
+
+#include <iostream>
+#include<stack>
+#include<vector>
+#include<stdlib.h>
+using namespace std;
+
+const int MAX=10000;
+vector <int> graph[MAX];
+bool visited[MAX];
+
+void dfs(int node)
+{
+	stack <int> s;
+	s.push(node);
+
+	while(!s.empty())
+	{
+		int curr_node=s.top();
+		s.pop();
+		if(!visited[curr_node])
+		{
+			visited[curr_node]=true;
+
+			if(visited[curr_node])
+			{
+				cout<<curr_node<<" ";
+			}
+
+			#pragma omp parallel for
+			for(int i=0;i<graph[curr_node].size();i++)
+			{
+				int adj_node=graph[curr_node][i];
+				if(!visited[adj_node])
+				{
+					s.push(adj_node);
+				}
+			}
+		}
+	}
+
+}
+
+
+int main()
+{
+	int n, e, start_node;
+	cout<<"Enter the node :";
+	cin>>n;
+	cout<<"Enter the edges :";
+	cin>>e;
+	cout<<"Starting node is :";
+	cin>>start_node;
+	cout<<"Enter the pair of edges :";
+	for(int i=0;i<e;i++)
+	{
+		int u, v;
+		cin>>u>>v;
+		graph[u].push_back(v);
+		graph[v].push_back(u);
+	}
+
+	#pragma omp parallel for
+	for(int i=0;i<n;i++)
+	{
+		visited[i]=false;
+	}
+
+	dfs(start_node);
+	return 0;
+
+}
+
+
+
+
+
+
+
+//=====================================================================================
+
+
+
+
+
+BFS
+
+
+
+#include <iostream>
+#include<stdlib.h>
+#include<queue>
+#include<omp.h>
+using namespace std;
+
+
+class node
+{
+public:
+	node *left, *right;
+	int data;
+};
+
+class breadthfs
+{
+public:
+	node * insert(node *, int);
+	void bfs(node *);
+};
+
+
+node *insert(node *root, int data)
+{
+	if(!root)
+	{
+		root=new node;
+		root->left=NULL;
+		root->right=NULL;
+		root->data=data;
+		return root;
+	}
+
+	queue <node *> q;
+	q.push(root);
+
+	while(!q.empty())
+	{
+		node * temp=q.front();
+		q.pop();
+		if(temp->left==NULL)
+		{
+			temp->left=new node;
+			temp->left->left=NULL;
+			temp->left->right=NULL;
+			temp->left->data=data;
+			return root;
+		}
+
+		else{
+			q.push(temp->left);
+		}
+
+		if(temp->right==NULL)
+		{
+			temp->right=new node;
+			temp->right->left=NULL;
+			temp->right->right=NULL;
+			temp->right->data=data;
+			return root;
+		}
+
+
+		else{
+			q.push(temp->right);
+		}
+	}
+}
+
+
+void bfs(node *head)
+{
+	queue<node *> q;
+	q.push(head);
+	int qsize;
+
+	while(!q.empty())
+	{
+		node * curr_node;
+		qsize=q.size();
+
+		#pragma omp parallel for
+		for(int i=0;i<qsize;i++)
+		{
+			#pragma omp critical
+			{
+				curr_node=q.front();
+				q.pop();
+				cout<<curr_node->data<<"\t";
+			}
+
+			#pragma omp critical
+			{
+				if(curr_node->left)
+				{
+					q.push(curr_node->left);
+				}
+
+				if(curr_node->right)
+				{
+					q.push(curr_node->right);
+				}
+			}
+		}
+	}
+}
+
+
+int main()
+{
+	node * root=NULL;
+	int data;
+	char ans;
+
+	do{
+		cout<<"Enter the data :";
+		cin>>data;
+		root=insert(root, data);
+		cout<<"Do you want to add one more node :";
+		cin>>ans;
+	}while(ans=='y' || ans=='Y');
+
+	bfs(root);
+	return 0;
+}
+
+
+
+
+//================================================================================================================
+
+
+
+
+
+merge
+
+
+
+#include <iostream>
+#include<omp.h>
+using namespace std;
+
+void merge(int a[], int lb, int mid, int ub);
+void mergesort(int a[], int lb, int ub);
+
+void mergesort(int a[], int lb, int ub)
+{
+	int mid;
+	if(lb<ub)
+	{
+		mid=(lb+ub)/2;
+
+		#pragma omp sections
+		{
+			#pragma omp section
+			{
+				mergesort(a, lb, mid);
+			}
+			#pragma omp section
+			{
+				mergesort(a, mid+1, ub);
+			}
+		}
+
+		merge(a, lb, mid, ub);
+	}
+}
+
+void merge(int a[], int lb, int mid, int ub)
+{
+	int i, j, k;
+	int b[ub+1];
+
+	i=lb;
+	j=mid+1;
+	k=lb;
+
+	while(i<=mid && j<=ub)
+	{
+		if(a[i]<=a[j])
+		{
+			b[k++]=a[i++];
+		}
+
+		else{
+			b[k++]=a[j++];
+		}
+	}
+
+
+	for(;i<=mid;i++)
+	{
+		b[k++]=a[i];
+	}
+
+	for(;j<=ub;j++)
+	{
+		b[k++]=a[j];
+	}
+
+	for(i=lb;i<=ub;i++)
+	{
+		a[i]=b[i];
+	}
+
+}
+
+
+
+int main()
+{
+	int n;
+	cout<<"Enter the length of array :";
+	cin>>n;
+
+	int a[n];
+	cout<<"Enter the elements of array :";
+
+	for(int i=0;i<n;i++)
+	{
+		cin>>a[i];
+	}
+
+	mergesort(a, 0, n-1);
+
+	cout<<"Sorted array is :";
+	for(int i=0;i<n;i++)
+	{
+		cout<<a[i]<<" ";
+	}
+
+	return 0;
+}
+
+
+
+
+
+
+//------------------------------------------------------------------------------------------------
+
+
+
+min max
+
+
+
+
+#include <iostream>
+#include<omp.h>
+#include<climits>
+using namespace std;
+
+void min_reduction(int a[], int n);
+void max_reduction(int a[], int n);
+void sum_reduction(int a[], int n);
+void avg_reduction(int a[], int n);
+
+void min_reduction(int a[], int n)
+{
+	int min_value=INT_MAX;
+	#pragma omp parallel for reduction(min:min_value)
+	for(int i=0;i<n;i++)
+	{
+		if(a[i]<min_value){
+			min_value=a[i];
+		}
+	}
+
+	cout<<"Minimum value is :"<<min_value<<endl;
+}
+
+void max_reduction(int a[], int n)
+{
+	int max_value=INT_MIN;
+	#pragma omp parallel for reduction(max:max_value)
+	for(int i=0;i<n;i++)
+	{
+		if(a[i]>max_value)
+		{
+			max_value=a[i];
+		}
+	}
+
+	cout<<"Maximum value is :"<<max_value<<endl;
+}
+
+
+void sum_reduction(int a[], int n)
+{
+	int sum=0;
+	#pragma omp parallel for reduction(+:sum)
+	for(int i=0;i<n;i++)
+	{
+		sum=sum+a[i];
+	}
+
+	cout<<"Sum : "<<sum<<endl;
+	cout<<"Average : "<<sum/n-1;
+}
+
+
+int main()
+{
+	int n;
+	cout<<"Enter the length of array :";
+	cin>>n;
+	int a[n];
+	cout<<"Enter the elements of array :";
+	for(int i=0;i<n;i++)
+	{
+		cin>>a[i];
+	}
+
+	min_reduction(a, n);
+	max_reduction(a, n);
+	sum_reduction(a, n);
+}
+
+
+
+
+
+
+
+
+
